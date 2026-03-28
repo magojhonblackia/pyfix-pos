@@ -138,6 +138,11 @@ if not exist "node_modules" (
 echo [4/4] Construyendo instalador .exe...
 echo ---------------------------------------------
 
+:: Deshabilitar firma de codigo (evita el error de symlinks en Windows sin permisos admin)
+set CSC_IDENTITY_AUTO_DISCOVERY=false
+set WIN_CSC_LINK=
+set CSC_LINK=
+
 call npm run dist
 if errorlevel 1 (
     echo [ERROR] electron-builder fallo

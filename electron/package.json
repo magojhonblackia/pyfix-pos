@@ -39,7 +39,9 @@
       }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "sign": false,
+      "signingHashAlgorithms": null
     },
     "nsis": {
       "oneClick": false,
