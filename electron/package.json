@@ -18,6 +18,7 @@
   "build": {
     "appId": "com.soyfixio.pyfix-pos",
     "productName": "PYFIX POS",
+    "artifactName": "PYFIX-POS-Setup.exe",
     "copyright": "Copyright © 2026 Fixio SAS",
     "directories": {
       "output": "../dist-installer"
@@ -45,8 +46,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "PYFIX POS",
-      "installerFileName": "PYFIX-POS-Setup.exe"
+      "shortcutName": "PYFIX POS"
     },
     "publish": {
       "provider": "github",
