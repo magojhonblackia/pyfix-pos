@@ -1,4 +1,12 @@
 @echo off
+:: ── Auto-elevar a Administrador si no lo somos ya ─────────────────────────────
+net session >nul 2>&1
+if errorlevel 1 (
+    echo Solicitando permisos de administrador...
+    powershell -Command "Start-Process cmd -ArgumentList '/c \"%~f0\"' -Verb RunAs -WorkingDirectory \"%~dp0\""
+    exit /b
+)
+
 :: Fijar directorio de trabajo a la carpeta del script (importante al doble-clic)
 cd /d "%~dp0"
 
@@ -138,7 +146,13 @@ if not exist "node_modules" (
 echo [4/4] Construyendo instalador .exe...
 echo ---------------------------------------------
 
-:: Deshabilitar firma de codigo (evita el error de symlinks en Windows sin permisos admin)
+:: Limpiar cache de winCodeSign (contiene symlinks que requieren admin)
+if exist "%LOCALAPPDATA%\electron-builder\Cache\winCodeSign" (
+    echo      Limpiando cache de winCodeSign...
+    rmdir /s /q "%LOCALAPPDATA%\electron-builder\Cache\winCodeSign"
+)
+
+:: Deshabilitar firma de codigo
 set CSC_IDENTITY_AUTO_DISCOVERY=false
 set WIN_CSC_LINK=
 set CSC_LINK=
