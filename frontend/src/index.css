@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+  }
+}
+
+/* ── Estilos de impresión — ticket de venta ── */
+@media print {
+  /* Ocultar TODO excepto el ticket */
+  body > * { display: none !important; }
+  #print-receipt {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+  }
+  /* Formato ticket térmico 80mm */
+  .receipt-paper {
+    width: 80mm;
+    margin: 0 auto;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+  }
+  .receipt-paper * { color: #000 !important; background: transparent !important; }
+  /* Ocultar botones dentro del ticket al imprimir */
+  .receipt-paper .no-print { display: none !important; }
+}

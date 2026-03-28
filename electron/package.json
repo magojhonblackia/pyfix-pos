@@ -1,0 +1,61 @@
+{
+  "name": "pyfix-pos",
+  "version": "1.0.0",
+  "description": "PYFIX POS — Sistema de punto de venta para minimarkets",
+  "main": "main.js",
+  "author": {
+    "name": "Fixio SAS",
+    "email": "hola@soyfixio.com"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "electron": "^28"
+  },
+  "devDependencies": {
+    "electron-builder": "^24"
+  },
+  "build": {
+    "appId": "com.soyfixio.pyfix-pos",
+    "productName": "PYFIX POS",
+    "copyright": "Copyright © 2026 Fixio SAS",
+    "directories": {
+      "output": "../dist-installer"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend-dist/backend.exe",
+        "to": "backend/backend.exe"
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PYFIX POS",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "magojhonblackia",
+      "repo": "MiniMarket"
+    }
+  }
+}

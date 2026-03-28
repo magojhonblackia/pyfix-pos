@@ -1,0 +1,11 @@
+fastapi==0.111.0
+python-dotenv==1.0.1
+uvicorn[standard]==0.29.0
+sqlalchemy==2.0.30
+pydantic==2.7.1
+python-multipart==0.0.9
+bcrypt==4.2.1
+python-jose[cryptography]==3.3.0
+# Hardware periféricos (opcionales — modo mock si no se instalan)
+pyserial==3.5
+python-escpos==3.1

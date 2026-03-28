@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.db
+*.db-shm
+*.db-wal
+venv/
+.venv/
+backend/pyfix_pos.db
+backend/data/
+
+# Node / Electron
+node_modules/
+frontend/node_modules/
+electron/node_modules/
+frontend/dist/
+dist-installer/
+backend-dist/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

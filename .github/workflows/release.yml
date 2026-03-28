@@ -1,0 +1,74 @@
+name: Build & Release PYFIX POS
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Dispara cuando haces: git tag v1.0.0 && git push --tags
+
+permissions:
+  contents: write   # necesario para subir assets al release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # ── 2. Configurar Node.js ─────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── 3. Configurar Python ──────────────────────────────────────────────
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 4. Construir frontend (Vite) ──────────────────────────────────────
+      - name: Instalar dependencias frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_BASE: http://127.0.0.1:8765
+
+      # ── 5. Compilar backend con PyInstaller ───────────────────────────────
+      - name: Instalar dependencias backend
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compilar backend con PyInstaller
+        working-directory: backend
+        run: |
+          pyinstaller --onefile --name backend --distpath ../backend-dist main.py
+
+      # ── 6. Instalar dependencias Electron ─────────────────────────────────
+      - name: Instalar dependencias Electron
+        working-directory: electron
+        run: npm ci
+
+      # ── 7. Construir instalador .exe con electron-builder ─────────────────
+      - name: Build instalador Windows
+        working-directory: electron
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 8. Subir el .exe al GitHub Release ────────────────────────────────
+      - name: Subir instalador al Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-installer/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
