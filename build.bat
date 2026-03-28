@@ -146,16 +146,14 @@ if not exist "node_modules" (
 echo [4/4] Construyendo instalador .exe...
 echo ---------------------------------------------
 
-:: Limpiar cache de winCodeSign (contiene symlinks que requieren admin)
+:: Limpiar cache corrupta de winCodeSign
 if exist "%LOCALAPPDATA%\electron-builder\Cache\winCodeSign" (
     echo      Limpiando cache de winCodeSign...
     rmdir /s /q "%LOCALAPPDATA%\electron-builder\Cache\winCodeSign"
 )
 
-:: Deshabilitar firma de codigo
+:: Deshabilitar firma de codigo — SOLO esta variable, las demas causan bugs
 set CSC_IDENTITY_AUTO_DISCOVERY=false
-set WIN_CSC_LINK=
-set CSC_LINK=
 
 call npm run dist
 if errorlevel 1 (
