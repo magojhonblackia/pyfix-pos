@@ -30,3 +30,10 @@ API_PORT = int(os.getenv("API_PORT", "8765"))
 
 # ── Hardware ──────────────────────────────────────────────────
 HARDWARE_MOCK = os.getenv("HARDWARE_MOCK", "true").lower() == "true"
+
+# ── Sincronización en la nube ──────────────────────────────
+# URL del servidor de licencias que también actúa como almacén de backups.
+CLOUD_SYNC_URL = os.getenv(
+    "CLOUD_SYNC_URL",
+    "https://minimarket-production-d94f.up.railway.app",
+)

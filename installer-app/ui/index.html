@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>Pos.SoyFixio — Instalador</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <img src="../assets/logo.png" alt="Pos.SoyFixio" class="logo">
+        <div class="brand-name">Pos.SoyFixio</div>
+        <div class="brand-tagline">Sistema POS Profesional</div>
+      </div>
+
+      <nav class="step-nav">
+        <div class="step-item active" data-step="welcome">
+          <span class="step-dot"></span>
+          <span class="step-label">Bienvenida</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="requirements">
+          <span class="step-dot"></span>
+          <span class="step-label">Requisitos</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="installing">
+          <span class="step-dot"></span>
+          <span class="step-label">Instalación</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="complete">
+          <span class="step-dot"></span>
+          <span class="step-label">Completado</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="footer-dot"></span>
+        pos.SoyFixio.com
+      </div>
+    </aside>
+
+    <!-- ═══ CONTENT ═══ -->
+    <main class="content">
+
+      <!-- ── Pantalla 1: Bienvenida ── -->
+      <div class="screen" id="screen-welcome">
+        <div class="screen-header">
+          <h1>Bienvenido al instalador</h1>
+          <p>Pos.SoyFixio v3.0 — Sistema de punto de venta para minimarkets</p>
+        </div>
+        <div class="screen-body">
+          <div class="info-card">
+            <div class="info-row">
+              <span class="info-label">Versión</span>
+              <span class="info-value">3.0.0</span>
+            </div>
+            <div class="info-row" style="align-items:center;gap:10px">
+              <span class="info-label">Directorio de instalación</span>
+              <div style="display:flex;align-items:center;gap:6px;flex:1">
+                <input
+                  type="text"
+                  id="input-path"
+                  value="C:\Pos.SoyFixio"
+                  style="
+                    flex:1;background:var(--bg-card);border:1px solid var(--border);
+                    border-radius:6px;padding:4px 10px;color:var(--text-primary);
+                    font-size:12px;font-family:inherit;outline:none;
+                  "
+                >
+                <button id="btn-browse" style="
+                  background:var(--bg-card);border:1px solid var(--border);border-radius:6px;
+                  padding:4px 10px;color:var(--text-primary);font-size:12px;
+                  font-family:inherit;cursor:pointer;white-space:nowrap;
+                ">Explorar…</button>
+              </div>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Espacio requerido</span>
+              <span class="info-value">~150 MB</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Plataforma</span>
+              <span class="info-value">Windows 10 / 11 (64-bit)</span>
+            </div>
+            <div class="info-row" style="align-items:center;gap:10px">
+              <span class="info-label">Puerto del servidor</span>
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input
+                  type="number"
+                  id="input-port"
+                  value="8765"
+                  min="1024"
+                  max="65535"
+                  style="
+                    width:90px;background:var(--bg-card);border:1px solid var(--border);
+                    border-radius:6px;padding:4px 10px;color:var(--text-primary);
+                    font-size:13px;font-family:inherit;outline:none;
+                    appearance:textfield;-moz-appearance:textfield;
+                  "
+                >
+                <span id="port-status" style="font-size:12px;color:var(--text-muted)">Predeterminado</span>
+              </div>
+            </div>
+          </div>
+          <div class="notice">
+            <svg class="notice-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span>Se requieren permisos de administrador. El instalador puede instalar componentes adicionales automáticamente.</span>
+          </div>
+        </div>
+        <div class="screen-footer">
+          <button class="btn btn-primary" id="btn-check-reqs">
+            Verificar requisitos
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Pantalla 2: Requisitos ── -->
+      <div class="screen hidden" id="screen-requirements">
+        <div class="screen-header">
+          <h1>Verificando requisitos</h1>
+          <p>Comprobando que el sistema cumple los requisitos mínimos</p>
+        </div>
+        <div class="screen-body">
+          <div class="req-list" id="req-list"></div>
+          <div class="req-error hidden" id="req-error">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            <span id="req-error-msg">Su sistema no cumple los requisitos mínimos.</span>
+          </div>
+        </div>
+        <div class="screen-footer">
+          <button class="btn btn-secondary" id="btn-back-welcome">← Atrás</button>
+          <button class="btn btn-primary hidden" id="btn-start-install">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            Instalar ahora
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Pantalla 3: Instalando ── -->
+      <div class="screen hidden" id="screen-installing">
+        <div class="screen-header">
+          <h1>Instalando Pos.SoyFixio</h1>
+          <p id="install-current-label">Iniciando instalación...</p>
+        </div>
+        <div class="screen-body">
+          <div class="progress-wrap">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+            <span class="progress-percent" id="progress-percent">0%</span>
+          </div>
+          <div class="steps-track" id="steps-track"></div>
+          <div class="install-log" id="install-log"></div>
+        </div>
+        <div class="screen-footer">
+          <!-- sin botones durante instalación -->
+        </div>
+      </div>
+
+      <!-- ── Pantalla 4: Completado ── -->
+      <div class="screen hidden" id="screen-complete">
+        <div class="screen-header">
+          <h1 id="complete-title">¡Instalación completada!</h1>
+          <p id="complete-msg">Pos.SoyFixio se instaló correctamente en su equipo.</p>
+        </div>
+        <div class="screen-body complete-body">
+          <div class="complete-icon" id="complete-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="info-card" id="complete-details">
+            <div class="info-row">
+              <span class="info-label">Instalado en</span>
+              <span class="info-value info-path" id="complete-path">C:\Pos.SoyFixio</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Puerto del servidor</span>
+              <span class="info-value" id="complete-port">8765</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Acceso directo</span>
+              <span class="info-value">Escritorio y Menú Inicio</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Estado</span>
+              <span class="info-value" style="color:#22c55e">Sistema iniciado</span>
+            </div>
+          </div>
+        </div>
+        <div class="screen-footer">
+          <button class="btn btn-secondary" id="btn-finish">Cerrar instalador</button>
+          <button class="btn btn-primary" id="btn-open-app">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+            </svg>
+            Abrir Pos.SoyFixio
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

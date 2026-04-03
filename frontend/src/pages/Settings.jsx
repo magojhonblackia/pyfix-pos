@@ -4,10 +4,12 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSettings }  from '@/hooks/useSettings.js'
-import { useAuth }      from '@/hooks/useAuth.jsx'
-import { useToast }     from '@/components/Toast.jsx'
-import { useScale }     from '@/hooks/useScale.jsx'
+import { useSettings }    from '@/hooks/useSettings.js'
+import { useAuth }        from '@/hooks/useAuth.jsx'
+import { useLicense }     from '@/hooks/useLicense.jsx'
+import { useCloudSync }   from '@/hooks/useCloudSync.js'
+import { useToast }       from '@/components/Toast.jsx'
+import { useScale }       from '@/hooks/useScale.jsx'
 import {
   getUsers, createUser, updateUser, deleteUser,
   getHardwareStatus, getScalePorts, connectScale, disconnectScale,
@@ -17,7 +19,9 @@ import {
   Settings as SettingsIcon, Store, Receipt, Bell, Save, Info,
   ShieldCheck, Cpu, Tag, Plus, Pencil, Trash2, X, Eye, EyeOff, AlertCircle,
   Scale, Printer, Vault, Power, PowerOff, RefreshCw, CheckCircle2,
-  Loader2, AlertTriangle, WifiOff, Check,
+  Loader2, AlertTriangle, WifiOff, Check, KeyRound, Wifi, CloudOff,
+  Clock, BadgeCheck, ShieldAlert, RotateCcw, Upload, Download, Cloud,
+  Package, ShoppingCart, Users, Truck,
 } from 'lucide-react'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/api.js'
 
@@ -705,6 +709,359 @@ function TabCategorias() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PESTAÑA: LICENCIA
+// ══════════════════════════════════════════════════════════════
+const STATUS_META = {
+  active:   { label: 'Activa',        color: 'bg-green-100 text-green-700 border-green-200',   icon: <BadgeCheck  size={13} /> },
+  trial:    { label: 'Prueba',         color: 'bg-blue-100 text-blue-700 border-blue-200',      icon: <Clock       size={13} /> },
+  grace:    { label: 'Gracia',         color: 'bg-amber-100 text-amber-700 border-amber-200',   icon: <ShieldAlert size={13} /> },
+  degraded: { label: 'Degradada',      color: 'bg-orange-100 text-orange-700 border-orange-200',icon: <ShieldAlert size={13} /> },
+  blocked:  { label: 'Bloqueada',      color: 'bg-red-100 text-red-700 border-red-200',         icon: <ShieldAlert size={13} /> },
+  offline:  { label: 'Sin conexión',   color: 'bg-slate-100 text-slate-600 border-slate-200',   icon: <CloudOff    size={13} /> },
+  none:     { label: 'Sin licencia',   color: 'bg-slate-100 text-slate-500 border-slate-200',   icon: <KeyRound    size={13} /> },
+}
+
+function LicenseStatusBadge({ status }) {
+  const meta = STATUS_META[status] ?? STATUS_META.none
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${meta.color}`}>
+      {meta.icon}{meta.label}
+    </span>
+  )
+}
+
+// ── Helper: formato de fecha relativa ─────────────────────────
+function timeAgo(isoStr) {
+  if (!isoStr) return 'nunca'
+  const diffMs  = Date.now() - new Date(isoStr).getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1)  return 'hace un momento'
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24)   return `hace ${diffH} h`
+  return `hace ${Math.floor(diffH / 24)} días`
+}
+
+// ── Tarjeta de stats de entidades ────────────────────────────
+function StatChip({ icon, label, count, accent = 'blue' }) {
+  const colors = {
+    blue:   'bg-blue-50   text-blue-700   border-blue-100',
+    violet: 'bg-violet-50 text-violet-700 border-violet-100',
+    green:  'bg-green-50  text-green-700  border-green-100',
+    amber:  'bg-amber-50  text-amber-700  border-amber-100',
+    rose:   'bg-rose-50   text-rose-700   border-rose-100',
+  }
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold ${colors[accent] ?? colors.blue}`}>
+      {icon}
+      <span className="text-[11px] font-medium opacity-80">{label}</span>
+      <span className="ml-auto font-bold tabular-nums">{count ?? '—'}</span>
+    </div>
+  )
+}
+
+function TabLicencia() {
+  const toast                                    = useToast()
+  const { settings, refetch: refetchSettings }   = useSettings()
+  const {
+    licenseKey, licenseStatus, loading: licLoading,
+    status, businessName, plan, daysRemaining,
+    checkLicense, removeLicense, lastChecked,
+  } = useLicense()
+  const {
+    pushing, pulling,
+    pushError, pullError,
+    pushResult, pullResult,
+    syncStatus,
+    lastPush, lastPull,
+    push, pull,
+    hasLicense,
+  } = useCloudSync()
+
+  const [revalidating, setRevalidating] = useState(false)
+  const [removing,     setRemoving]     = useState(false)
+  const [confirmDel,   setConfirmDel]   = useState(false)
+  const [revalMsg,     setRevalMsg]     = useState(null)
+
+  // ── Revalidar licencia ───────────────────────────────────────
+  const handleRevalidate = async () => {
+    setRevalidating(true)
+    setRevalMsg(null)
+    try {
+      await checkLicense()
+      if (licenseStatus?.business_name) {
+        const API = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8765/api'
+        await fetch(`${API}/settings/init`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ businessName: licenseStatus.business_name }),
+        }).catch(() => {})
+        await refetchSettings()
+      }
+      setRevalMsg({ type: 'success', text: 'Licencia verificada correctamente.' })
+      toast('Licencia revalidada', 'success')
+    } catch {
+      setRevalMsg({ type: 'error', text: 'No se pudo conectar al servidor de licencias.' })
+      toast('Error al revalidar', 'error')
+    } finally {
+      setRevalidating(false)
+    }
+  }
+
+  // ── Push ─────────────────────────────────────────────────────
+  const handlePush = async () => {
+    const res = await push()
+    if (res.ok) {
+      toast(`Datos subidos a la nube — ${res.data.stats?.products ?? 0} productos, ${res.data.stats?.sales ?? 0} ventas`, 'success')
+    } else {
+      toast(res.error || 'Error al subir datos', 'error')
+    }
+  }
+
+  // ── Pull ─────────────────────────────────────────────────────
+  const handlePull = async () => {
+    const res = await pull()
+    if (res.ok) {
+      const imp = res.data.imported
+      toast(
+        `Datos restaurados — ${imp?.products ?? 0} productos, ${imp?.sales ?? 0} ventas importados`,
+        'success',
+      )
+      await refetchSettings()
+    } else {
+      toast(res.error || 'Error al restaurar datos', 'error')
+    }
+  }
+
+  // ── Eliminar licencia ────────────────────────────────────────
+  const handleRemove = async () => {
+    setRemoving(true)
+    try {
+      removeLicense()
+      toast('Licencia eliminada. Volviendo a activación…', 'warning')
+      setTimeout(() => window.location.reload(), 1500)
+    } finally {
+      setRemoving(false)
+      setConfirmDel(false)
+    }
+  }
+
+  const checkedAgo = lastChecked ? timeAgo(new Date(lastChecked).toISOString()) : 'nunca'
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Estado de licencia ───────────────────────────────── */}
+      <Card
+        icon={<KeyRound size={15} />}
+        title="Estado de licencia"
+        badge={<LicenseStatusBadge status={status} />}
+      >
+        {licLoading ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <Loader2 size={14} className="animate-spin" /> Verificando…
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm">
+            {[
+              ['Clave de licencia', licenseKey
+                ? <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{licenseKey}</span>
+                : <span className="text-slate-400">—</span>],
+              ['Negocio registrado', businessName || <span className="text-slate-400">—</span>],
+              ['Plan', plan
+                ? <span className="capitalize font-semibold">{plan}</span>
+                : <span className="text-slate-400">—</span>],
+              ['Días restantes', daysRemaining !== null
+                ? <span className={daysRemaining < 7 ? 'text-red-600 font-bold' : 'text-green-700 font-semibold'}>
+                    {daysRemaining > 0 ? `${daysRemaining} días` : 'Vencida'}
+                  </span>
+                : <span className="text-slate-400">—</span>],
+              ['Última verificación', <span className="text-slate-500 text-xs">{checkedAgo}</span>],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between items-center border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                <span className="text-slate-500 font-medium">{label}</span>
+                <span>{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Revalidar */}
+        {revalMsg && (
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border mt-1 ${
+            revalMsg.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-700'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}>
+            {revalMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+            {revalMsg.text}
+          </div>
+        )}
+        <button
+          onClick={handleRevalidate}
+          disabled={revalidating || !licenseKey}
+          className={BTN_S + ' mt-1'}
+        >
+          {revalidating
+            ? <><Loader2 size={13} className="animate-spin" /> Verificando…</>
+            : <><RotateCcw size={13} /> Revalidar licencia</>}
+        </button>
+      </Card>
+
+      {/* ── Copia de seguridad en la nube ────────────────────── */}
+      <Card
+        icon={<Cloud size={15} />}
+        title="Copia de seguridad en la nube"
+        badge={
+          lastPush
+            ? <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                <CheckCircle2 size={12} /> Sincronizado
+              </span>
+            : <span className="text-xs text-slate-400">Sin sincronizar</span>
+        }
+      >
+        <p className="text-sm text-slate-500">
+          Sube todos tus datos (productos, ventas, clientes, categorías) a la nube para tener
+          siempre un respaldo. Puedes restaurarlos en cualquier otro equipo con la misma licencia.
+        </p>
+
+        {/* Stats locales */}
+        {syncStatus && (
+          <div className="grid grid-cols-2 gap-2">
+            <StatChip icon={<Package    size={12} />} label="Productos"   count={syncStatus.local_products}   accent="blue"   />
+            <StatChip icon={<ShoppingCart size={12} />} label="Ventas"    count={syncStatus.local_sales}      accent="green"  />
+            <StatChip icon={<Users      size={12} />} label="Clientes"    count={syncStatus.local_customers}  accent="violet" />
+            <StatChip icon={<Truck      size={12} />} label="Proveedores" count={syncStatus.local_suppliers}  accent="amber"  />
+          </div>
+        )}
+
+        {/* Resultado push */}
+        {pushResult && !pushError && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border bg-green-50 border-green-200 text-green-700">
+            <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
+            <div>
+              Subida exitosa — {pushResult.stats?.products ?? 0} productos,{' '}
+              {pushResult.stats?.sales ?? 0} ventas, {pushResult.stats?.customers ?? 0} clientes.
+              <span className="block text-xs font-normal opacity-70 mt-0.5">
+                {timeAgo(pushResult.pushed_at)}
+              </span>
+            </div>
+          </div>
+        )}
+        {pushError && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm border bg-red-50 border-red-200 text-red-700">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {pushError}
+          </div>
+        )}
+
+        {/* Botón PUSH */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handlePush}
+            disabled={pushing || pulling || !hasLicense}
+            className={BTN_P}
+          >
+            {pushing
+              ? <><Loader2 size={14} className="animate-spin" /> Subiendo…</>
+              : <><Upload size={14} /> Subir datos a la nube</>}
+          </button>
+          {lastPush && (
+            <span className="text-xs text-slate-400">Último backup: {timeAgo(lastPush)}</span>
+          )}
+        </div>
+
+        {!hasLicense && (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <AlertTriangle size={12} /> Activa la licencia para habilitar la sincronización.
+          </p>
+        )}
+      </Card>
+
+      {/* ── Restaurar desde la nube ──────────────────────────── */}
+      <Card icon={<Download size={15} />} title="Restaurar datos desde la nube">
+        <p className="text-sm text-slate-500">
+          Descarga los datos que subiste previamente e impórtalos en este equipo.
+          Ideal para configurar un PC nuevo o recuperar información. Los datos
+          existentes <strong>no se eliminan</strong>, solo se añaden los que faltan.
+        </p>
+
+        {/* Resultado pull */}
+        {pullResult && !pullError && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border bg-blue-50 border-blue-200 text-blue-700">
+            <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
+            <div>
+              Restauración exitosa —{' '}
+              {pullResult.imported?.products ?? 0} productos,{' '}
+              {pullResult.imported?.sales ?? 0} ventas,{' '}
+              {pullResult.imported?.categories ?? 0} categorías importados.
+              {pullResult.cloud_updated_at && (
+                <span className="block text-xs font-normal opacity-70 mt-0.5">
+                  Respaldo del {new Date(pullResult.cloud_updated_at).toLocaleString('es')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {pullError && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm border bg-red-50 border-red-200 text-red-700">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {pullError}
+          </div>
+        )}
+
+        {/* Botón PULL */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handlePull}
+            disabled={pulling || pushing || !hasLicense}
+            className={BTN_S}
+          >
+            {pulling
+              ? <><Loader2 size={14} className="animate-spin" /> Restaurando…</>
+              : <><Download size={14} /> Restaurar datos desde la nube</>}
+          </button>
+          {lastPull && (
+            <span className="text-xs text-slate-400">Última restauración: {timeAgo(lastPull)}</span>
+          )}
+        </div>
+      </Card>
+
+      {/* ── Zona de peligro ──────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-red-100 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldAlert size={15} className="text-red-400" />
+          <h3 className="text-sm font-bold text-red-700">Zona de peligro</h3>
+        </div>
+        <p className="text-sm text-slate-500 mb-4">
+          Elimina la licencia registrada en <strong>este equipo</strong>. La licencia seguirá
+          activa en el servidor y podrás activarla en otro dispositivo. Esta acción cerrará
+          la aplicación y volverá a la pantalla de activación.
+        </p>
+        {!confirmDel ? (
+          <button onClick={() => setConfirmDel(true)} disabled={!licenseKey} className={BTN_R}>
+            <X size={14} /> Eliminar licencia de este equipo
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {removing ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Confirmar eliminación
+            </button>
+            <button onClick={() => setConfirmDel(false)} className={BTN_S}>
+              Cancelar
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
 // PESTAÑA: SISTEMA
 // ══════════════════════════════════════════════════════════════
 function TabSistema() {
@@ -731,11 +1088,12 @@ function TabSistema() {
 // PÁGINA PRINCIPAL
 // ══════════════════════════════════════════════════════════════
 const TABS = [
-  { id: 'negocio',    label: 'Negocio',    icon: <Store      size={15} /> },
-  { id: 'categorias', label: 'Categorías', icon: <Tag        size={15} /> },
+  { id: 'negocio',    label: 'Negocio',    icon: <Store       size={15} /> },
+  { id: 'categorias', label: 'Categorías', icon: <Tag         size={15} /> },
   { id: 'usuarios',   label: 'Usuarios',   icon: <ShieldCheck size={15} /> },
-  { id: 'hardware',   label: 'Hardware',   icon: <Cpu        size={15} /> },
-  { id: 'sistema',    label: 'Sistema',    icon: <Info       size={15} /> },
+  { id: 'hardware',   label: 'Hardware',   icon: <Cpu         size={15} /> },
+  { id: 'licencia',   label: 'Licencia',   icon: <KeyRound    size={15} /> },
+  { id: 'sistema',    label: 'Sistema',    icon: <Info        size={15} /> },
 ]
 
 export default function Settings() {
@@ -776,6 +1134,7 @@ export default function Settings() {
         {tab === 'categorias' && <TabCategorias />}
         {tab === 'usuarios'   && <TabUsuarios   />}
         {tab === 'hardware'   && <TabHardware   />}
+        {tab === 'licencia'   && <TabLicencia   />}
         {tab === 'sistema'    && <TabSistema    />}
 
       </div>

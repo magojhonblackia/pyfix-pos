@@ -34,6 +34,23 @@ export function useSettings() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
 
+  const fetchFromApi = useCallback(async () => {
+    setLoading(true)
+    try {
+      const remote = await getSettings()
+      const merged = { ...DEFAULT_SETTINGS, ...remote }
+      setSettings(merged)
+      writeCache(merged)
+      setError(null)
+      return merged
+    } catch (e) {
+      setError(e.message)
+      throw e
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Cargar desde la API al montar
   useEffect(() => {
     let cancelled = false
@@ -63,7 +80,10 @@ export function useSettings() {
     await saveSettings(updates)
   }, [settings])
 
-  return { settings, save, loading, error }
+  /** Fuerza re-fetch desde la API (útil tras sincronización de licencia) */
+  const refetch = fetchFromApi
+
+  return { settings, save, loading, error, refetch }
 }
 
 /** Leer settings sin hook — devuelve la caché local (síncrono, sin red). */

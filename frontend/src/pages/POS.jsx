@@ -6,10 +6,11 @@ import CheckoutButton  from '@/components/CheckoutButton.jsx'
 import PaymentModal    from '@/components/PaymentModal.jsx'
 import SaleReceipt     from '@/components/SaleReceipt.jsx'
 import CustomerPicker  from '@/components/CustomerPicker.jsx'
-import { useCartStore } from '@/store/cartStore.js'
-import { createSale }  from '@/services/api.js'
-import { formatCOP, formatTime }   from '@/lib/utils.js'
-import { useToast }    from '@/components/Toast.jsx'
+import { useCartStore }   from '@/store/cartStore.js'
+import { createSale }    from '@/services/api.js'
+import { formatCOP, formatTime } from '@/lib/utils.js'
+import { useToast }      from '@/components/Toast.jsx'
+import { useCloudSync }  from '@/hooks/useCloudSync.js'
 import ScaleWidget  from '@/components/ScaleWidget.jsx'
 import { AlertCircle, Receipt, Percent, StickyNote, PauseCircle, PlayCircle, X, Scale } from 'lucide-react'
 
@@ -35,9 +36,10 @@ export default function POS() {
   const [saleNote,      setSaleNote]      = useState('')
   const [customer,      setCustomer]      = useState(null)   // { id, name }
   const [pendingWeight, setPendingWeight] = useState(null)   // kg desde balanza
-  const qc        = useQueryClient()
-  const toast     = useToast()
-  const searchRef = useRef(null)
+  const qc              = useQueryClient()
+  const toast           = useToast()
+  const { autoPush }    = useCloudSync()
+  const searchRef       = useRef(null)
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
@@ -134,6 +136,8 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['inventory'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
+      // Backup silencioso en la nube (throttled — máx 1 vez por minuto)
+      autoPush()
     },
     onError: (e) => {
       setShowPayment(false)

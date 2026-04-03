@@ -1,6 +1,10 @@
+import os
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import config as _config  # noqa: F401 — garantiza que load_dotenv() se ejecuta primero
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -20,12 +24,14 @@ from models import (  # noqa: F401 — registrar todos los modelos en Base.metad
     FiscalInvoice, ContingencyRange,
     PettyCashExpense,
     BusinessSettings,
+    SyncSnapshot,
 )
 from models.audit import AUDIT_TRIGGERS_SQL
 from models.product import PRODUCTS_FTS_SQL
 from routers import products, sales, cash_register, suppliers, purchase_orders, customers
 from routers import auth as auth_router, users as users_router, hardware as hardware_router, inventory as inventory_router
 from routers import settings as settings_router
+from routers import sync as sync_router
 from constants import DEV_BUSINESS_ID, DEV_BRANCH_ID, DEV_CATEGORY_IDS, DEV_USER_ID
 
 app = FastAPI(title="PYFIX POS API", version="2.0.0")
@@ -49,6 +55,8 @@ app.include_router(customers.router,       prefix="/api")
 app.include_router(hardware_router.router,   prefix="/api")
 app.include_router(inventory_router.router, prefix="/api")
 app.include_router(settings_router.router,  prefix="/api")
+app.include_router(sync_router.cloud_router)            # /sync/snapshot  (sin /api — recibido por Railway)
+app.include_router(sync_router.local_router, prefix="/api")  # /api/sync/push|pull|status
 
 
 def _hash_pw(password: str) -> str:
@@ -127,11 +135,38 @@ def on_startup():
         _create_dev_fixtures(db)
 
 
+# ── Frontend estático (modo instalado) ────────────────────────────────────────
+# Cuando el backend corre como backend.exe en C:\Pos.SoyFixio, sirve la SPA React
+# desde C:\Pos.SoyFixio\frontend\ para evitar restricciones CORS del protocolo file://
+if getattr(sys, 'frozen', False):
+    # Ejecutando como PyInstaller bundle: el exe está en C:\PyFixPOS\backend.exe
+    _app_dir = os.path.dirname(sys.executable)
+else:
+    # Desarrollo: subir un nivel desde backend/ para encontrar frontend/dist o frontend-dist
+    _app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+_frontend_dir   = os.path.join(_app_dir, 'frontend')
+_frontend_index = os.path.join(_frontend_dir, 'index.html') if os.path.isdir(_frontend_dir) else None
+
+
 @app.get("/", include_in_schema=False)
 def root():
+    if _frontend_index and os.path.isfile(_frontend_index):
+        return FileResponse(_frontend_index)
     return RedirectResponse(url="/docs")
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "pyfix-pos", "version": "2.0.0"}
+
+
+# Servir assets del frontend (CSS, JS, imágenes) — se registra después de las
+# rutas API para que /api/* siga teniendo prioridad.
+if _frontend_dir and os.path.isdir(os.path.join(_frontend_dir, 'assets')):
+    app.mount('/assets', StaticFiles(directory=os.path.join(_frontend_dir, 'assets')), name='frontend-assets')
+
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app, host=_config.API_HOST, port=_config.API_PORT, log_level='warning')

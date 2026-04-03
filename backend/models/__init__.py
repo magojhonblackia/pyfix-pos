@@ -14,6 +14,7 @@ from .sale import Sale, SaleItem, Payment, CashRegister                     # no
 from .fiscal import FiscalInvoice, ContingencyRange                          # noqa: F401
 from .petty_cash import PettyCashExpense                                     # noqa: F401
 from .settings import BusinessSettings                                       # noqa: F401
+from .sync_snapshot import SyncSnapshot                                      # noqa: F401
 
 __all__ = [
     # base
@@ -40,4 +41,6 @@ __all__ = [
     "PettyCashExpense",
     # settings
     "BusinessSettings",
+    # sync
+    "SyncSnapshot",
 ]

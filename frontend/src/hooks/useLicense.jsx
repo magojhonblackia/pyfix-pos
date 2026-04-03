@@ -13,6 +13,23 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { validateLicense, activateLicense } from '@/services/licenseApi.js'
 
+const LOCAL_API = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8765/api'
+
+/** Intenta pre-poblar el nombre del negocio en la BD local con los datos
+ *  del servidor de licencias. Solo funciona en el primer arranque (cuando
+ *  el nombre todavía es el predeterminado). Falla silenciosamente. */
+async function seedLocalSettings(businessName, phone) {
+  try {
+    await fetch(`${LOCAL_API}/settings/init`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ businessName, phone: phone ?? '' }),
+    })
+  } catch {
+    // Sin conexión al backend local — ignorar
+  }
+}
+
 const LICENSE_KEY_STORAGE = 'pyfix_license_key'
 
 const LicenseContext = createContext(null)
@@ -45,6 +62,12 @@ export function LicenseProvider({ children }) {
       setLicenseKey(trimmed)
       setLicenseStatus(validation.data)
       setLastChecked(Date.now())
+
+      // Pre-poblar datos del negocio en la BD local (solo primer arranque)
+      const { business_name, owner_name } = validation.data
+      if (business_name) {
+        await seedLocalSettings(business_name, null)
+      }
     }
 
     setLoading(false)
@@ -57,6 +80,10 @@ export function LicenseProvider({ children }) {
     const result = await validateLicense(licenseKey)
     if (result.ok) {
       setLicenseStatus(result.data)
+      // Intentar seed en cada check — el endpoint solo actúa si aún es el nombre por defecto
+      if (result.data.business_name) {
+        seedLocalSettings(result.data.business_name, null)
+      }
     } else {
       // Sin conexión → mantener último estado conocido (modo offline)
       setLicenseStatus(prev => prev ? { ...prev, _offline: true } : { status: 'offline', full_access: true, can_use_reports: true, can_use_all_payments: true })
