@@ -13,9 +13,16 @@ cd /d "%~dp0"
 title Pos.SoyFixio — Generando Instalador
 color 0A
 
+:: ── Versión del instalador ────────────────────────────────────────────────────
+:: Cambia este valor antes de generar una nueva versión para distribución.
+:: El backend.exe la expone en /api/system/version y el frontend la usa
+:: para detectar actualizaciones disponibles en GitHub Releases.
+set APP_VERSION=3.0.1
+set GITHUB_REPO=magojhonblackia/pyfix-pos
+
 echo.
 echo ================================================
-echo   GENERANDO INSTALADOR - Pos.SoyFixio v3.0
+echo   GENERANDO INSTALADOR - Pos.SoyFixio v%APP_VERSION%
 echo ================================================
 echo.
 
@@ -107,7 +114,10 @@ if exist "..\build-tmp"    rmdir /s /q "..\build-tmp"
 mkdir "..\backend-dist"              2>nul
 mkdir "..\build-tmp\backend\backend" 2>nul
 
-echo      Compilando backend.exe...
+echo      Compilando backend.exe (v%APP_VERSION%)...
+:: Inyectar versión y repo como variables de entorno en el exe compilado
+set APP_VERSION=%APP_VERSION%
+set GITHUB_REPO=%GITHUB_REPO%
 pyinstaller --onefile --name backend ^
   --distpath ..\backend-dist ^
   --workpath ..\build-tmp\backend ^
@@ -299,9 +309,18 @@ echo.
 echo   Ese .exe es el unico archivo que el cliente
 echo   necesita descargar y ejecutar.
 echo.
+echo   Version compilada: v%APP_VERSION%
+echo.
 echo   NOTA IMPORTANTE para el cliente:
 echo   Al abrir la app por primera vez debe ingresar
 echo   su clave de licencia en la pantalla de activacion.
 echo   La clave fue enviada al correo registrado.
+echo.
+echo   PARA DISTRIBUIR ACTUALIZACIONES AUTOMATICAS:
+echo   1. Sube el .exe generado a GitHub Releases con el tag v%APP_VERSION%
+echo      https://github.com/%GITHUB_REPO%/releases/new
+echo   2. Los clientes instalados veran el banner de actualizacion
+echo      automaticamente (se chequea cada 6 horas).
+echo   3. Al hacer click en "Actualizar ahora" se descarga e instala solo.
 echo.
 pause

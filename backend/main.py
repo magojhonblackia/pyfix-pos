@@ -32,6 +32,7 @@ from routers import products, sales, cash_register, suppliers, purchase_orders, 
 from routers import auth as auth_router, users as users_router, hardware as hardware_router, inventory as inventory_router
 from routers import settings as settings_router
 from routers import sync as sync_router
+from routers import system as system_router
 from constants import DEV_BUSINESS_ID, DEV_BRANCH_ID, DEV_CATEGORY_IDS, DEV_USER_ID
 
 app = FastAPI(title="PYFIX POS API", version="2.0.0")
@@ -57,6 +58,7 @@ app.include_router(inventory_router.router, prefix="/api")
 app.include_router(settings_router.router,  prefix="/api")
 app.include_router(sync_router.cloud_router)            # /sync/snapshot  (sin /api — recibido por Railway)
 app.include_router(sync_router.local_router, prefix="/api")  # /api/sync/push|pull|status
+app.include_router(system_router.router,     prefix="/api")  # /api/system/version|check-update|apply-update
 
 
 def _hash_pw(password: str) -> str:

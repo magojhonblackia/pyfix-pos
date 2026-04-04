@@ -37,3 +37,9 @@ CLOUD_SYNC_URL = os.getenv(
     "CLOUD_SYNC_URL",
     "https://minimarket-production-d94f.up.railway.app",
 )
+
+# ── Versión y auto-update ──────────────────────────────────
+# APP_VERSION: versión del ejecutable instalado en el cliente.
+# GITHUB_REPO: "usuario/repo" del repositorio con releases publicados.
+APP_VERSION = os.getenv("APP_VERSION", "3.0.0")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "magojhonblackia/pyfix-pos")

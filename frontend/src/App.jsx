@@ -1,10 +1,14 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom'
+// NOTA: HashRouter en lugar de BrowserRouter porque la app corre desde file://
+// Con BrowserRouter, navegar a /pos hace que Electron busque el archivo "pos" en el
+// filesystem → pantalla en blanco. HashRouter usa /#/pos → no toca el filesystem.
 import { useQuery } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.jsx'
 import { LicenseProvider, useLicense } from '@/hooks/useLicense.jsx'
 import { getLowStockProducts } from './services/api.js'
-import Activation  from './pages/Activation.jsx'
-import TrialBanner from './components/TrialBanner.jsx'
+import Activation    from './pages/Activation.jsx'
+import TrialBanner   from './components/TrialBanner.jsx'
+import UpdateBanner  from './components/UpdateBanner.jsx'
 import Dashboard     from './pages/Dashboard.jsx'
 import POS           from './pages/POS.jsx'
 import Products      from './pages/Products.jsx'
@@ -156,6 +160,8 @@ function AdminLayout() {
 
         {/* Banner licencia */}
         <TrialBanner />
+        {/* Banner actualización — solo admin */}
+        {user?.role === 'admin' && <UpdateBanner />}
 
         {/* Links agrupados */}
         <nav className="flex flex-col p-2 flex-1 overflow-y-auto gap-4">
@@ -237,15 +243,15 @@ function AppShell() {
 
   // 3. Cajero sin permisos extra → layout mínimo
   if (user?.role === 'cashier' && (user?.permissions ?? []).length === 0) return (
-    <BrowserRouter>
+    <HashRouter>
       <CashierLayout />
-    </BrowserRouter>
+    </HashRouter>
   )
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AdminLayout />
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 

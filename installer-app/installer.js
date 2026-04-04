@@ -321,6 +321,8 @@ function createLauncher(port = 8765, installPath) {
     `oEnv("API_PORT") = "${port}"`,
     'oEnv("API_HOST") = "127.0.0.1"',
     'oEnv("HARDWARE_MOCK") = "false"',
+    `oEnv("APP_VERSION") = "${process.env.APP_VERSION || '3.0.1'}"`,
+    `oEnv("GITHUB_REPO") = "${process.env.GITHUB_REPO || 'magojhonblackia/pyfix-pos'}"`,
     '',
     '\'  Iniciar backend en segundo plano (sin ventana)',
     'On Error Resume Next',
@@ -457,20 +459,52 @@ async function install(port = 8765, onProgress, installPath = DEFAULT_INSTALL_PA
     const launchVbs = createLauncher(port, installPath)
     log('✔ Lanzador creado: ' + launchVbs)
 
-    const makeShortcut = (dest) => [
-      `$s=(New-Object -COM WScript.Shell).CreateShortcut('${dest}')`,
-      `$s.TargetPath='${launchVbs}'`,
-      `$s.WorkingDirectory='${installPath}'`,
-      `$s.Description='Pos.SoyFixio - Sistema de Punto de Venta'`,
-      `$s.Save()`
-    ].join(';')
+    // Copiar ícono al directorio de instalación (facilita buscarlo desde el .lnk)
+    const iconSrc = path.join(__dirname, '..', 'electron', 'build', 'icon.ico')
+    const iconDst = path.join(installPath, 'icon.ico')
+    if (fs.existsSync(iconSrc) && !fs.existsSync(iconDst)) {
+      try { fs.copyFileSync(iconSrc, iconDst) } catch {}
+    }
+    const iconPath = fs.existsSync(iconDst) ? iconDst : ''
 
-    const desktopLnk   = 'C:\\Users\\Public\\Desktop\\Pos.SoyFixio.lnk'
+    // Construye el script PowerShell para crear un acceso directo .lnk
+    // Target = wscript.exe (ejecuta el VBS sin abrir ventana de cmd)
+    // Arguments = "C:\Pos.SoyFixio\launch.vbs"
+    const makeShortcut = (dest) => {
+      const lines = [
+        `$ws = New-Object -COM WScript.Shell`,
+        `$s  = $ws.CreateShortcut('${dest}')`,
+        `$s.TargetPath       = 'wscript.exe'`,
+        `$s.Arguments        = '/nologo "${launchVbs}"'`,
+        `$s.WorkingDirectory = '${installPath}'`,
+        `$s.Description      = 'Pos.SoyFixio - Sistema de Punto de Venta'`,
+      ]
+      if (iconPath) lines.push(`$s.IconLocation = '${iconPath},0'`)
+      lines.push(`$s.Save()`)
+      return lines.join('; ')
+    }
+
+    // Escritorio público (visible para todos los usuarios del equipo)
+    const desktopLnk = 'C:\\Users\\Public\\Desktop\\Pos.SoyFixio.lnk'
+    // Escritorio del usuario actual (cubre el caso en que Public\\Desktop no sea visible)
+    const userDesktopLnk = path.join(
+      process.env.USERPROFILE || 'C:\\Users\\Default',
+      'Desktop',
+      'Pos.SoyFixio.lnk'
+    )
     const startMenuLnk = 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Pos.SoyFixio.lnk'
 
-    await execAsync(`powershell -command "${makeShortcut(desktopLnk)}"`)
-    await execAsync(`powershell -command "${makeShortcut(startMenuLnk)}"`)
-    log('✔ Accesos directos creados (Escritorio y Menú Inicio)')
+    // Crear en escritorio público
+    await execAsync(`powershell -NoProfile -Command "${makeShortcut(desktopLnk)}"`)
+      .catch(e => log('⚠ Escritorio público: ' + e.message))
+    // Crear también en escritorio del usuario actual (doble seguridad)
+    await execAsync(`powershell -NoProfile -Command "${makeShortcut(userDesktopLnk)}"`)
+      .catch(e => log('⚠ Escritorio usuario: ' + e.message))
+    // Menú Inicio
+    await execAsync(`powershell -NoProfile -Command "${makeShortcut(startMenuLnk)}"`)
+      .catch(e => log('⚠ Menú Inicio: ' + e.message))
+
+    log('✔ Accesos directos creados (Escritorio público, Escritorio usuario, Menú Inicio)')
 
     // Paso 5 — Iniciar backend y esperar que responda (polling real)
     progress(5, 'Iniciando servidor — esto puede tardar hasta 30 segundos...')
@@ -485,6 +519,8 @@ async function install(port = 8765, onProgress, installPath = DEFAULT_INSTALL_PA
         API_PORT:      String(port),
         API_HOST:      '127.0.0.1',
         HARDWARE_MOCK: 'false',
+        APP_VERSION:   process.env.APP_VERSION || '3.0.1',
+        GITHUB_REPO:   process.env.GITHUB_REPO || 'magojhonblackia/pyfix-pos',
       }
     }).unref()
 
