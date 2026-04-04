@@ -116,11 +116,15 @@ export const getSales = (dateFrom = null, dateTo = null) => {
 export const getSalesSummary = () =>
   request(`${BASE}/sales/summary`)
 
-export const voidSale = (saleId, reason) =>
+export const voidSale = (saleId, reason, adminUsername, adminPassword) =>
   request(`${BASE}/sales/${saleId}/void`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({
+      reason,
+      admin_username: adminUsername,
+      admin_password: adminPassword,
+    }),
   })
 
 // ── Inventario ────────────────────────────────────────────────
@@ -258,14 +262,20 @@ export const printReceipt = (payload) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-export const printerTest  = () =>
-  request(`${BASE}/hardware/printer/test`, { method: 'POST' })
+export const getPrinterList = () => request(`${BASE}/hardware/printer/list`)
 
-export const openCashDrawer = (saleId = null, reason = 'sale') =>
+export const printerTest  = (printerName = null) =>
+  request(`${BASE}/hardware/printer/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ printer_name: printerName }),
+  })
+
+export const openCashDrawer = (saleId = null, reason = 'sale', printerName = null) =>
   request(`${BASE}/hardware/cash-drawer/open`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sale_id: saleId, reason }),
+    body: JSON.stringify({ sale_id: saleId, reason, printer_name: printerName }),
   })
 
 // ── Usuarios ──────────────────────────────────────────────────

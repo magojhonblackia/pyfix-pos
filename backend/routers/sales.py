@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+import bcrypt
 
 from database import get_db
 from deps import get_current_user, require_role
@@ -230,8 +231,28 @@ def create_sale(data: SaleCreate, db: Session = Depends(get_db), _u: User = Depe
 
 
 @router.post("/{sale_id}/void", response_model=SaleResponse)
-def void_sale(sale_id: str, data: VoidRequest, db: Session = Depends(get_db), _u: User = Depends(require_role("admin", "supervisor"))):
-    """Anular venta: marca como voided y devuelve el stock."""
+def void_sale(sale_id: str, data: VoidRequest, db: Session = Depends(get_db)):
+    """
+    Anular venta con autorización del administrador.
+    El cajero envía las credenciales del admin en el body — no necesita
+    cambiar de sesión ni que el admin ingrese al POS.
+    """
+    # ── Validar credenciales del administrador ────────────────
+    admin = db.query(User).filter(
+        User.username    == data.admin_username.strip().lower(),
+        User.business_id == DEV_BUSINESS_ID,
+        User.is_active   == 1,
+    ).first()
+
+    _err = "Credenciales de administrador incorrectas"
+    if not admin:
+        raise HTTPException(401, _err)
+    if admin.role not in ("admin", "supervisor"):
+        raise HTTPException(403, "El usuario ingresado no tiene permisos de administrador")
+    if not bcrypt.checkpw(data.admin_password.encode(), admin.password_hash.encode()):
+        raise HTTPException(401, _err)
+
+    # ── Buscar venta ──────────────────────────────────────────
     sale = db.query(Sale).filter(
         Sale.id == sale_id,
         Sale.business_id == DEV_BUSINESS_ID,
@@ -242,13 +263,13 @@ def void_sale(sale_id: str, data: VoidRequest, db: Session = Depends(get_db), _u
     if sale.status == "voided":
         raise HTTPException(400, "Esta venta ya fue anulada")
 
-    # Restaurar inventario ítem por ítem + registrar movimiento
+    # ── Restaurar inventario ítem por ítem ────────────────────
     for item in sale.items:
         if item.voided:
             continue
         inv = db.query(Inventory).filter(
             Inventory.product_id == item.product_id,
-            Inventory.branch_id == DEV_BRANCH_ID,
+            Inventory.branch_id  == DEV_BRANCH_ID,
         ).first()
         qty        = Decimal(str(item.quantity))
         qty_before = Decimal(str(inv.quantity)) if inv else Decimal("0")
@@ -270,11 +291,11 @@ def void_sale(sale_id: str, data: VoidRequest, db: Session = Depends(get_db), _u
             quantity_after=qty_before + qty,
             reason="void_return",
             sale_id=sale_id,
-            user_id=_u.id,
+            user_id=admin.id,       # registra qué admin autorizó
         ))
 
     sale.status = "voided"
-    sale.notes  = data.reason
+    sale.notes  = f"[Autorizado por: {admin.username}] {data.reason}".strip()
     db.commit()
     db.refresh(sale)
     cname = _get_customer_name(db, sale.customer_id)

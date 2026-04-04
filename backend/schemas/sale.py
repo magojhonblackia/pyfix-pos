@@ -3,7 +3,9 @@ from pydantic import BaseModel, Field
 
 
 class VoidRequest(BaseModel):
-    reason: str = "Error de operación"
+    reason:          str = "Error de operación"
+    admin_username:  str
+    admin_password:  str
 
 
 class SaleItemIn(BaseModel):

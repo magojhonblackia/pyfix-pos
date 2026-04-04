@@ -536,7 +536,6 @@ def cloud_get_snapshot(license_key: str, db: Session = Depends(get_db)):
 @local_router.get("/status")
 def get_sync_status(
     db: Session = Depends(get_db),
-    _u: User = Depends(get_current_user),
 ):
     """Devuelve estadísticas locales y fechas de último push/pull."""
     biz_id = DEV_BUSINESS_ID
@@ -630,7 +629,6 @@ class _SyncPullBody(BaseModel):
 def pull_from_cloud(
     body: _SyncPullBody,
     db:   Session = Depends(get_db),
-    _u:   User    = Depends(require_role("admin", "supervisor")),
 ):
     """
     Descarga el snapshot más reciente de la nube e importa los datos en SQLite local.

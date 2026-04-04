@@ -66,8 +66,10 @@ export default function Sales() {
   const [customFrom, setFrom]       = useState(today())
   const [customTo,   setTo]         = useState(today())
   const [expanded,   setExpanded]   = useState(null)
-  const [voidTarget, setVoidTarget] = useState(null)
-  const [voidReason, setVoidReason] = useState('')
+  const [voidTarget,    setVoidTarget]    = useState(null)
+  const [voidReason,    setVoidReason]    = useState('')
+  const [adminUsername, setAdminUsername] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
 
   const active    = PRESETS.find((p) => p.id === preset)
   const dateFrom  = preset === 'custom' ? customFrom : active.from()
@@ -80,7 +82,12 @@ export default function Sales() {
   })
 
   const voidMut = useMutation({
-    mutationFn: () => voidSale(voidTarget.id, voidReason || 'Error de operación'),
+    mutationFn: () => voidSale(
+      voidTarget.id,
+      voidReason || 'Devolución autorizada',
+      adminUsername.trim(),
+      adminPassword,
+    ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales'] })
       qc.invalidateQueries({ queryKey: ['products'] })
@@ -89,6 +96,8 @@ export default function Sales() {
       toast(`Venta #${voidTarget.id.slice(0, 8).toUpperCase()} anulada`, 'warning')
       setVoidTarget(null)
       setVoidReason('')
+      setAdminUsername('')
+      setAdminPassword('')
     },
     onError: (e) => toast(e.message, 'error'),
   })
@@ -348,9 +357,18 @@ export default function Sales() {
           sale={voidTarget}
           reason={voidReason}
           setReason={setVoidReason}
+          adminUsername={adminUsername}
+          setAdminUsername={setAdminUsername}
+          adminPassword={adminPassword}
+          setAdminPassword={setAdminPassword}
           loading={voidMut.isPending}
           onConfirm={() => voidMut.mutate()}
-          onClose={() => setVoidTarget(null)}
+          onClose={() => {
+            setVoidTarget(null)
+            setVoidReason('')
+            setAdminUsername('')
+            setAdminPassword('')
+          }}
         />
       )}
     </div>
@@ -358,12 +376,21 @@ export default function Sales() {
 }
 
 // ── Subcomponentes ───────────────────────────────────────────
-function VoidModal({ sale, reason, setReason, loading, onConfirm, onClose }) {
+function VoidModal({
+  sale, reason, setReason,
+  adminUsername, setAdminUsername,
+  adminPassword, setAdminPassword,
+  loading, onConfirm, onClose,
+}) {
+  const canConfirm = adminUsername.trim().length > 0 && adminPassword.length > 0
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+        {/* Cabecera */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -378,11 +405,13 @@ function VoidModal({ sale, reason, setReason, loading, onConfirm, onClose }) {
           </button>
         </div>
 
-        <div className="px-5 py-4 flex flex-col gap-3">
+        <div className="px-5 py-4 flex flex-col gap-4">
           <p className="text-sm text-slate-600">
             Esta acción <strong>devolverá el stock</strong> de todos los ítems al inventario.
             No se puede deshacer.
           </p>
+
+          {/* Motivo */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Motivo (opcional)
@@ -392,24 +421,54 @@ function VoidModal({ sale, reason, setReason, loading, onConfirm, onClose }) {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ej: Error de cobro, producto devuelto..."
+              className="mt-1.5 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-slate-400"
+            />
+          </div>
+
+          {/* Credenciales admin */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-col gap-2.5">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1.5">
+              <span>🔐</span> Autorización del administrador
+            </p>
+            <input
+              type="text"
+              value={adminUsername}
+              onChange={(e) => setAdminUsername(e.target.value)}
+              placeholder="Usuario admin"
               autoFocus
-              className="mt-1.5 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-red-400"
+              autoComplete="off"
+              className="w-full px-3 py-2 text-sm border border-amber-300 rounded-lg outline-none focus:border-amber-500 bg-white"
+            />
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Contraseña"
+              autoComplete="new-password"
+              onKeyDown={(e) => { if (e.key === 'Enter' && canConfirm && !loading) onConfirm() }}
+              className="w-full px-3 py-2 text-sm border border-amber-300 rounded-lg outline-none focus:border-amber-500 bg-white"
             />
           </div>
         </div>
 
+        {/* Botones */}
         <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose}
             className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 cursor-pointer"
           >
             Cancelar
           </button>
-          <button onClick={onConfirm} disabled={loading}
+          <button
+            onClick={onConfirm}
+            disabled={loading || !canConfirm}
             className={`flex-[2] py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-colors ${
-              loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 cursor-pointer'
+              loading || !canConfirm
+                ? 'bg-slate-300 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700 cursor-pointer'
             }`}
           >
-            <Ban size={14} /> {loading ? 'Anulando...' : 'Confirmar anulación'}
+            <Ban size={14} />
+            {loading ? 'Anulando...' : 'Confirmar anulación'}
           </button>
         </div>
       </div>
